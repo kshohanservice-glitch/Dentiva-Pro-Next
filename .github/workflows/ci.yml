@@ -134,8 +134,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Generate Windows icons
-        run: npm run icons
+      - name: Verify committed Windows icons
+        shell: pwsh
+        run: |
+          if (!(Test-Path build/icon.ico) -or !(Test-Path build/icon.png)) {
+            throw 'Committed Windows icon assets are missing.'
+          }
+          Write-Host 'Committed Windows icons are present.'
       - name: Rebuild native modules for the Electron ABI
         run: npx electron-builder install-app-deps
       - name: Verify Windows Argon2 dependency before packaging
