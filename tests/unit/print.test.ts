@@ -11,7 +11,7 @@ vi.mock('electron', () => ({
   app: { getAppPath: () => '/app' },
 }));
 
-import { buildPrintHash, marginsMmToPrintMargins, mmToInches, profilePageCss } from '../../src/main/print';
+import { buildPrintHash, marginsMmToPrintMargins, mmToInches, normalizePrintGeometry, profilePageCss } from '../../src/main/print';
 import type { PrintProfile } from '../../src/shared/types';
 
 function profile(patch: Partial<PrintProfile>): PrintProfile {
@@ -81,5 +81,37 @@ describe('profilePageCss (@page geometry)', () => {
       params: { from: '2026-09-01', to: '2026-09-30' },
     });
     expect(hash).toBe('#print/report/0?report=daily_collection&profile=inv-a4&from=2026-09-01&to=2026-09-30');
+  });
+});
+
+
+describe('normalizePrintGeometry', () => {
+  it('keeps a valid A4 profile unchanged', () => {
+    expect(normalizePrintGeometry({
+      widthMm: 210,
+      heightMm: 297,
+      marginsMm: { top: 12, right: 12, bottom: 12, left: 12 },
+    })).toEqual({
+      widthMm: 210,
+      heightMm: 297,
+      marginsMm: { top: 12, right: 12, bottom: 12, left: 12 },
+    });
+  });
+
+  it('clamps negative/oversized margins so printable area cannot become negative', () => {
+    const g = normalizePrintGeometry({
+      widthMm: 210,
+      heightMm: 297,
+      marginsMm: { top: 999, right: 999, bottom: -4, left: -7 },
+    });
+    expect(g.marginsMm.top + g.marginsMm.bottom).toBeLessThanOrEqual(297 - 2);
+    expect(g.marginsMm.left + g.marginsMm.right).toBeLessThanOrEqual(210 - 2);
+    expect(g.marginsMm.bottom).toBe(0);
+    expect(g.marginsMm.left).toBe(0);
+  });
+
+  it('falls back to safe physical dimensions for invalid input', () => {
+    expect(normalizePrintGeometry({ widthMm: Number.NaN, heightMm: 0 }).widthMm).toBe(210);
+    expect(normalizePrintGeometry({ widthMm: Number.NaN, heightMm: 0 }).heightMm).toBe(297);
   });
 });
