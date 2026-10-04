@@ -9,6 +9,7 @@ import '@fontsource/noto-sans-bengali/600.css';
 import './styles/tokens.css';
 import './styles/global.css';
 import './styles/print.css';
+import './styles/print-next.css';
 import { App } from './App';
 
 const container = document.getElementById('root');
