@@ -1,0 +1,238 @@
+/* Dentiva Pro Next — print hardening layer.
+   Loaded after the legacy print stylesheet. The renderer's inline @page rule
+   supplies the selected paper size and profile margins; this layer controls
+   fragmentation, overflow, typography, and physical-sheet preview behavior. */
+
+.print-doc,
+.print-doc * {
+  box-sizing: border-box;
+}
+
+.print-doc {
+  max-width: 100%;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  hyphens: auto;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.print-doc img,
+.print-doc svg,
+.print-doc canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+.print-doc table {
+  width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  break-inside: auto !important;
+  page-break-inside: auto !important;
+}
+
+.print-doc thead {
+  display: table-header-group;
+}
+
+.print-doc tfoot {
+  display: table-footer-group;
+}
+
+.print-doc tr {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.print-doc th,
+.print-doc td {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.print-doc pre,
+.print-doc code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.print-doc h1,
+.print-doc h2,
+.print-doc h3,
+.print-doc h4 {
+  break-after: avoid;
+  page-break-after: avoid;
+  break-inside: avoid;
+  page-break-inside: avoid;
+  orphans: 3;
+  widows: 3;
+}
+
+.print-doc p,
+.print-doc li,
+.print-doc .print-kv,
+.print-doc .section-card,
+.print-doc .sig-block,
+.print-doc .sig-compact {
+  orphans: 3;
+  widows: 3;
+}
+
+.print-doc .section-card {
+  break-inside: auto;
+  page-break-inside: auto;
+}
+
+.print-doc .page-break,
+.print-doc .print-page-break {
+  break-after: page;
+  page-break-after: always;
+}
+
+.print-doc .page-break-before,
+.print-doc .print-page-break-before {
+  break-before: page;
+  page-break-before: always;
+}
+
+.print-doc .keep-together {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.print-doc .avoid-break-after {
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+.print-doc .avoid-break-before {
+  break-before: avoid;
+  page-break-before: avoid;
+}
+
+.print-doc .no-wrap {
+  white-space: nowrap;
+}
+
+@media screen {
+  .print-stage {
+    contain: layout paint;
+  }
+
+  .print-doc {
+    flex: 0 0 auto;
+    max-width: calc(100vw - 32px);
+  }
+
+  .print-doc:not(.thermal80):not(.label) {
+    min-width: 0;
+  }
+}
+
+@media print {
+  html,
+  body,
+  #root,
+  .print-root,
+  .print-stage {
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  .print-root {
+    display: block !important;
+  }
+
+  .print-stage {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .print-toolbar {
+    display: none !important;
+  }
+
+  .print-doc {
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+
+  .print-doc.thermal80,
+  .print-doc.thermal80.thermal-receipt,
+  .print-doc.thermal80.thermal-invoice {
+    width: auto !important;
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  .print-doc table {
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+
+  .print-doc thead {
+    display: table-header-group !important;
+  }
+
+  .print-doc tfoot {
+    display: table-footer-group !important;
+  }
+
+  .print-doc tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-doc a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+}
+
+/* Long clinical narratives should fragment naturally rather than create a
+   giant unbreakable box that overflows the page. */
+.print-doc .clinical-narrative,
+.print-doc .long-text,
+.print-doc .notes,
+.print-doc .diagnosis,
+.print-doc .treatment-notes {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  break-inside: auto;
+  page-break-inside: auto;
+}
+
+/* Avoid visual collisions between adjacent dense sections. */
+.print-doc > * + * {
+  max-width: 100%;
+}
+
+.print-doc .print-footer {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+@media print {
+  .print-doc .print-footer {
+    break-before: auto;
+  }
+}
