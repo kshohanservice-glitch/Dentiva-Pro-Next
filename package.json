@@ -1,8 +1,8 @@
 {
-  "name": "dentiva-pro",
-  "productName": "Dentiva Pro",
-  "version": "2.0.2",
-  "description": "Dentiva Pro — offline dental clinic management software for Windows",
+  "name": "dentiva-pro-next",
+  "productName": "Dentiva Pro Next",
+  "version": "2.1.0",
+  "description": "Dentiva Pro Next — flagship offline dental clinic management software for Windows",
   "author": "Shohan Khan <helloiamshohan@gmail.com>",
   "license": "UNLICENSED",
   "private": true,
