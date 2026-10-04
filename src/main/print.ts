@@ -245,7 +245,6 @@ export async function saveAsPdf(opts: PdfOptions): Promise<PdfResult> {
       scale: opts.scale ? Math.max(0.25, Math.min(2, opts.scale / 100)) : 1,
       printBackground: true,
       preferCSSPageSize: true,
-      generateDocumentOutline: true,
     });
     fs.writeFileSync(save.filePath, data);
     const stat = fs.statSync(save.filePath);
