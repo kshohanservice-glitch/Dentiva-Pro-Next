@@ -83,12 +83,44 @@ export function getPrintContents(): WebContents {
   throw new AppError('INTERNAL', 'Print window is not open.');
 }
 
+function clampNumber(value: unknown, fallback: number, min: number, max: number): number {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
+
+export interface PrintGeometry {
+  widthMm: number;
+  heightMm: number;
+  marginsMm: { top: number; right: number; bottom: number; left: number };
+}
+
+export function normalizePrintGeometry(opts: {
+  widthMm?: number;
+  heightMm?: number;
+  marginsMm?: { top: number; right: number; bottom: number; left: number };
+}): PrintGeometry {
+  const widthMm = clampNumber(opts.widthMm, 210, 10, 1000);
+  const heightMm = clampNumber(opts.heightMm, 297, 10, 1500);
+  const raw = opts.marginsMm ?? { top: 10, right: 10, bottom: 10, left: 10 };
+  const maxHorizontal = Math.max(0, widthMm - 2);
+  const maxVertical = Math.max(0, heightMm - 2);
+  const left = clampNumber(raw.left, 10, 0, maxHorizontal);
+  const right = clampNumber(raw.right, 10, 0, maxHorizontal - left);
+  const top = clampNumber(raw.top, 10, 0, maxVertical);
+  const bottom = clampNumber(raw.bottom, 10, 0, maxVertical - top);
+  return { widthMm, heightMm, marginsMm: { top, right, bottom, left } };
+}
+
 /** Convert millimetres to inches (Electron printToPDF uses inches). */
 export function mmToInches(mm: number): number {
   return Math.max(0, Number(((Number(mm) || 0) / 25.4).toFixed(4)));
 }
 
-/** Convert millimetres to 96-DPI CSS pixels for Electron webContents.print custom margins. */
+/**
+ * Kept for legacy callers. The Next print renderer owns document margins via
+ * CSS @page so new callers should prefer marginType:none in native printing.
+ */
 export function marginsMmToPrintMargins(
   marginsMm?: { top: number; right: number; bottom: number; left: number },
 ): { marginType: 'custom'; top: number; right: number; bottom: number; left: number } {
@@ -101,6 +133,27 @@ export function marginsMmToPrintMargins(
     bottom: toPx(m.bottom),
     left: toPx(m.left),
   };
+}
+
+async function waitForPrintReady(wc: WebContents): Promise<void> {
+  await wc.executeJavaScript(`(async () => {
+    try {
+      if (document.fonts?.ready) await document.fonts.ready;
+      const images = Array.from(document.images);
+      await Promise.all(images.map(async (img) => {
+        try {
+          if (!img.complete) await new Promise<void>((resolve) => {
+            img.addEventListener('load', () => resolve(), { once: true });
+            img.addEventListener('error', () => resolve(), { once: true });
+          });
+          if (typeof img.decode === 'function') await img.decode().catch(() => {});
+        } catch {}
+      }));
+      await new Promise(requestAnimationFrame);
+      await new Promise(requestAnimationFrame);
+    } catch {}
+    return true;
+  })()`, true);
 }
 
 export interface PrintExecuteOptions {
@@ -120,7 +173,11 @@ export type PrintResult = { ok: true } | { ok: false; cancelled?: boolean; error
 
 export async function executePrint(opts: PrintExecuteOptions): Promise<PrintResult> {
   const wc = getPrintContents();
+  const geometry = normalizePrintGeometry(opts);
   try {
+    await waitForPrintReady(wc);
+    const physicalWidth = opts.landscape ? geometry.heightMm : geometry.widthMm;
+    const physicalHeight = opts.landscape ? geometry.widthMm : geometry.heightMm;
     const ok = await new Promise<boolean>((resolve, reject) => {
       wc.print(
         {
@@ -128,18 +185,18 @@ export async function executePrint(opts: PrintExecuteOptions): Promise<PrintResu
           printBackground: true,
           deviceName: opts.printerName ?? '',
           copies: Math.max(1, Math.min(99, Number(opts.copies) || 1)),
-          landscape: !!opts.landscape,
+          landscape: false,
           color: opts.color !== false,
           duplexMode: opts.duplex,
-          margins: marginsMmToPrintMargins(opts.marginsMm),
+          // Margins are rendered by the document's @page rule. Applying them
+          // again here would shrink/shift the document a second time.
+          margins: { marginType: 'none' },
           pagesPerSheet: 1,
           scaleFactor: opts.scale ? Math.max(25, Math.min(200, Math.round(opts.scale))) : 100,
-          ...(opts.widthMm && opts.heightMm
-            ? { pageSize: {
-                width: Math.max(353, Math.round(Number(opts.widthMm) * 1000)),
-                height: Math.max(353, Math.round(Number(opts.heightMm) * 1000)),
-              } }
-            : {}),
+          pageSize: {
+            width: Math.max(353, Math.round(physicalWidth * 1000)),
+            height: Math.max(353, Math.round(physicalHeight * 1000)),
+          },
         },
         (success, failureReason) => {
           if (success) resolve(true);
@@ -177,22 +234,18 @@ export async function saveAsPdf(opts: PdfOptions): Promise<PdfResult> {
   if (save.canceled || !save.filePath) return { ok: false, cancelled: true, error: 'Save cancelled.' };
 
   try {
-    // Electron printToPDF uses inches (1 inch = 25.4 mm) for pageSize and margins.
-    const m = opts.marginsMm ?? { top: 10, right: 10, bottom: 10, left: 10 };
-    const widthIn = Math.max(1.5, mmToInches(opts.widthMm || 210));
-    const heightIn = Math.max(2.0, mmToInches(opts.heightMm || 297));
+    const geometry = normalizePrintGeometry(opts);
+    await waitForPrintReady(win.webContents);
+    const physicalWidth = opts.landscape ? geometry.heightMm : geometry.widthMm;
+    const physicalHeight = opts.landscape ? geometry.widthMm : geometry.heightMm;
     const data = await win.webContents.printToPDF({
-      pageSize: { width: widthIn, height: heightIn },
-      landscape: Boolean(opts.landscape),
-      scale: opts.scale ? Math.max(0.25, Math.min(2, opts.scale / 100)) : undefined,
-      margins: {
-        top: mmToInches(m.top),
-        right: mmToInches(m.right),
-        bottom: mmToInches(m.bottom),
-        left: mmToInches(m.left),
-      },
+      pageSize: { width: mmToInches(physicalWidth), height: mmToInches(physicalHeight) },
+      // The renderer's @page rule is the single source of truth for margins.
+      margins: { top: 0, right: 0, bottom: 0, left: 0 },
+      scale: opts.scale ? Math.max(0.25, Math.min(2, opts.scale / 100)) : 1,
       printBackground: true,
       preferCSSPageSize: true,
+      generateDocumentOutline: true,
     });
     fs.writeFileSync(save.filePath, data);
     const stat = fs.statSync(save.filePath);
@@ -210,8 +263,6 @@ export interface PrinterInfo {
 
 export async function listPrinters(from: WebContents): Promise<PrinterInfo[]> {
   try {
-    // Electron ≥43: PrinterInfo exposes name/displayName/description/options —
-    // status/isDefault were removed from the API (Chromium print backend change).
     const printers = await from.getPrintersAsync();
     return printers.map((p) => ({
       name: p.name,
