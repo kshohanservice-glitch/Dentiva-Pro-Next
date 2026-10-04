@@ -1,0 +1,91 @@
+appId: com.dentiva.pro.demo
+productName: Dentiva Pro Demo
+copyright: © 2026 Dentiva Pro — Shohan Khan
+
+directories:
+  output: dist-demo
+  buildResources: build
+
+# App payload: compiled main process, renderer bundle, package.json and
+# production dependencies (better-sqlite3, @node-rs/argon2, archiver, …).
+files:
+  - dist/**
+  - build/icon.ico
+  - build/icon.png
+  - '!dist/*.exe'
+  - '!dist/SHA256SUMS.txt'
+  - '!dist/win-unpacked/**'
+  - '!dist/builder-*.yml'
+  - '!dist/.icon-*/**'
+  - package.json
+  # Build-time-only payloads that must not bloat the NSIS exe (GitHub's
+  # 100 MB per-file push limit applies to the dist/ fallback commit):
+  #   better-sqlite3 prebuilds (17 MB, foreign ABIs), sqlite amalgamation +
+  #   headers (9.9 MB) and C sources — the Electron-ABI binary is produced
+  #   by install-app-deps into build/Release, which stays packaged.
+  #   *.map: tsc/vite sourcemaps are dev artifacts, never shipped (V1.0 rule).
+  # better-sqlite3 13 ships Node-API (napi) prebuilds — ONE binary per platform
+  # works for every N-API-capable runtime, including Electron 43, and the
+  # loader (lib/binding.js) consults prebuilds/ BEFORE build/Release. The CI
+  # ABI-rebuild output never reaches the package, so the win32-x64 prebuild IS
+  # the production binary — keep exactly that one, drop foreign platforms.
+  - '!node_modules/better-sqlite3/prebuilds/darwin-*'
+  - '!node_modules/better-sqlite3/prebuilds/linux-*'
+  - '!node_modules/better-sqlite3/prebuilds/linuxmusl-*'
+  - '!node_modules/better-sqlite3/prebuilds/win32-arm64.node'
+  - '!node_modules/better-sqlite3/deps/**'
+  - '!node_modules/better-sqlite3/src/**'
+  - '!**/*.map'
+  # MSVC build intermediates (object files, import libs, debug symbols) kept
+  # by node-gyp next to the final better_sqlite3.node — never needed at runtime.
+  - '!node_modules/better-sqlite3/build/Release/obj.target/**'
+  - '!node_modules/better-sqlite3/build/**/*.lib'
+  - '!node_modules/better-sqlite3/build/**/*.exp'
+  - '!node_modules/better-sqlite3/build/**/*.pdb'
+  - '!node_modules/better-sqlite3/build/**/*.ilk'
+
+# Keep the installer under GitHub's 100 MB per-file push limit for the dist/
+# fallback commit, and make downloads lighter for clinics on slow links.
+# Electron ships ~60 locale packs; the UI is English-only, so only en-US ships.
+electronLanguages:
+  - en-US
+
+compression: maximum
+
+afterPack: scripts/after-pack.cjs
+
+asar: true
+# Native modules must be readable outside the asar archive.
+asarUnpack:
+  # Keep every native .node binary outside app.asar. This is required for
+  # @node-rs/argon2's platform package and better-sqlite3 on Windows.
+  - '**/*.node'
+  - 'node_modules/@node-rs/argon2/**'
+  - 'node_modules/@node-rs/argon2-win32-x64-msvc/**'
+  - 'node_modules/better-sqlite3/**'
+npmRebuild: true
+
+win:
+  icon: build/icon.ico
+  target:
+    - target: nsis
+      arch:
+        - x64
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: Dentiva Pro Demo
+  uninstallDisplayName: Dentiva Pro Demo
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerHeaderIcon: build/icon.ico
+  artifactName: DentivaPro-Demo-Setup-${version}.exe
+  deleteAppDataOnUninstall: false
+
+extraMetadata:
+  dentivaBuildMode: demo
+  version: 1.1.2-demo.1

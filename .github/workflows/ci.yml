@@ -1,0 +1,290 @@
+name: CI
+
+# Dentiva Pro v2.0.1 release pipeline: verify, E2E, package and publish the Windows installer.
+on:
+  push:
+    paths-ignore:
+      - 'dist/**'
+      - 'docs/**'
+      - '*.md'
+      - '*.log'
+  pull_request:
+    paths-ignore:
+      - 'dist/**'
+      - 'docs/**'
+      - '*.md'
+      - '*.log'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Keep release verification independent from stale queued attempts.
+
+jobs:
+  verify:
+    name: Typecheck, lint, unit & integration tests
+    runs-on: windows-latest
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/checkout@v4
+      - name: Ensure checkout worktree is materialized
+        shell: bash
+        run: |
+          test -f package.json
+          test -f package-lock.json
+      - run: npm ci
+      - name: Typecheck (main process)
+        run: npx tsc -p tsconfig.node.json --noEmit
+      - name: Typecheck (renderer + tests)
+        run: npx tsc -p tsconfig.renderer.json --noEmit
+      - name: Lint
+        run: npx eslint .
+      - name: Unit & integration tests (vitest)
+        shell: bash
+        run: |
+          set +e
+          npm test 2>&1 | tee vitest-output.log
+          code=${PIPESTATUS[0]}
+          set -e
+          if [ "$code" -ne 0 ]; then
+            echo "::error title=vitest failed (exit $code)"
+            # Emit failure context as annotations (log CDN unreachable from sandbox)
+            grep -E "FAIL |AssertionError|Serialized Error|→ " vitest-output.log | tail -50 | while IFS= read -r line; do
+              esc="${line//'%'/'%25'}"
+              esc="${esc//$'\r'/' '}"
+              esc="${esc//$'\n'/' '}"
+              echo "::error title=test failure::$esc"
+            done
+            exit "$code"
+          fi
+      - name: Build (main + renderer)
+        run: npm run build
+      - name: No TODO/FIXME/HACK markers in code
+        shell: bash
+        run: |
+          if grep -rEn 'TODO|FIXME|HACK' src tests scripts --include='*.ts' --include='*.tsx' --include='*.mjs'; then
+            echo '::error::Release-code markers found (TODO/FIXME/HACK are forbidden).'
+            exit 1
+          fi
+          echo 'No markers.'
+
+  e2e:
+    name: Electron E2E (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Rebuild native modules for the Electron ABI
+        run: npx electron-builder install-app-deps
+      - name: Playwright E2E (real app window)
+        shell: pwsh
+        run: |
+          npm run test:e2e 2>&1 | Tee-Object -FilePath e2e-output.log
+          if ($LASTEXITCODE -ne 0) {
+            # Surface failure details as annotations (readable via the API even
+            # when artifact/log CDNs are unreachable from the sandbox).
+            $lines = Get-Content e2e-output.log
+            $signal = $lines | Where-Object { $_ -match '\[diag|\[renderer|\[pageerror|Error|error:|✘|failed|expect|at tests|Timeout' } | Select-Object -Last 15
+            if (-not $signal) { $signal = $lines | Select-Object -Last 15 }
+            $n = 0
+            foreach ($l in $signal) {
+              $n++
+              $esc = ($l -replace '[\r\n]', ' ')
+              Write-Host "::error title=E2E failure $n::$esc"
+            }
+            # App-side logs (main process) if the app got far enough to create them.
+            if (Test-Path .dentiva-data/logs) {
+              Get-ChildItem -Recurse .dentiva-data/logs -File -ErrorAction SilentlyContinue | ForEach-Object {
+                Get-Content $_.FullName -Tail 25 | ForEach-Object { Write-Host "::error title=app log::$_" }
+              }
+            }
+            exit 1
+          }
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  package:
+    name: NSIS installer + installed-artifact smoke test
+    runs-on: windows-latest
+    needs: [verify, e2e]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Generate Windows icons
+        run: npm run icons
+      - name: Rebuild native modules for the Electron ABI
+        run: npx electron-builder install-app-deps
+      - name: Verify Windows Argon2 dependency before packaging
+        shell: pwsh
+        run: |
+          node -e "const m=require('@node-rs/argon2-win32-x64-msvc'); if (!m || typeof m.hash !== 'function') process.exit(1); console.log('Argon2 Windows x64 binding dependency is installed.')"
+      - name: Build NSIS installer
+        shell: pwsh
+        run: |
+          $env:DEBUG = 'electron-builder*'
+          npm run dist 2>&1 | Tee-Object -FilePath dist-output.log
+          $code = $LASTEXITCODE
+          if ($code -ne 0) {
+            Write-Host "::error title=NSIS build exit code::$code"
+            $lines = Get-Content dist-output.log | Where-Object { $_.Trim() -ne '' } | Select-Object -Last 30
+            $n = 0
+            foreach ($l in $lines) {
+              $n++
+              $esc = ($l -replace '%', '%25' -replace '[\r\n]', ' ')
+              Write-Host "::error title=NSIS build tail $n::$esc"
+            }
+            # Commit the full builder log so it can be read over plain git
+            # (artifact/log CDNs are unreachable from the agent sandbox).
+            # Push side-effects only on push events — never on pull requests.
+            if ($env:GITHUB_EVENT_NAME -eq 'push') {
+              Copy-Item dist-output.log ci-debug.log -Force
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git add -f ci-debug.log
+              if (!(git diff --cached --quiet)) {
+                git commit -m "ci: capture electron-builder debug log"
+                git push origin "HEAD:$env:GITHUB_REF_NAME"
+              }
+            }
+            exit 1
+          }
+      - name: Verify Windows Argon2 native binding is packaged at runtime path
+        shell: pwsh
+        run: |
+          $native = Join-Path (Get-Location) "dist\win-unpacked\resources\app.asar.unpacked\node_modules\@node-rs\argon2\argon2.win32-x64-msvc.node"
+          if (-not (Test-Path $native)) {
+            Write-Host "::error title=Argon2 runtime binding missing::Expected runtime binding was not staged/unpacked at $native"
+            Get-ChildItem -Recurse -File dist\win-unpacked\resources | Where-Object { $_.Name -like '*argon2*.node' } | ForEach-Object { Write-Host "Found: $($_.FullName)" }
+            exit 1
+          }
+          Write-Host "Argon2 runtime binding: $native"
+          Write-Host "Argon2 runtime binding size: $((Get-Item $native).Length) bytes"
+      - name: Silent-install the actual installer and smoke-test it
+        shell: pwsh
+        run: |
+          function Say([string]$m) {
+            $one = ($m -replace '[\r\n]', ' ')
+            if ($one.Length -gt 400) { $one = $one.Substring(0, 400) }
+            Write-Host "::error title=artifact smoke::$one"
+          }
+          $ver = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $installer = Get-Item (Join-Path (Get-Location) "dist\DentivaPro-Setup-$ver.exe") -ErrorAction SilentlyContinue
+          if (-not $installer) { Say "Version-matched installer missing: DentivaPro-Setup-$ver.exe"; exit 1 }
+          $installDir = Join-Path $env:RUNNER_TEMP 'dentiva-installed'
+          Write-Host "installer: $($installer.FullName)"
+          $p = Start-Process -FilePath $installer.FullName -ArgumentList '/S', "/D=$installDir" -PassThru -Wait
+          Write-Host "installer exit code: $($p.ExitCode)"
+          $appExe = Join-Path $installDir 'Dentiva Pro.exe'
+          if (!(Test-Path $appExe)) {
+            Say "installed exe missing: $appExe (installer exit $($p.ExitCode))"
+            if (Test-Path $installDir) {
+              Get-ChildItem $installDir | ForEach-Object { Say "dir: $($_.Name)" }
+            } else { Say "install dir does not exist: $installDir" }
+            exit 1
+          }
+          node scripts/smoke-installed.mjs "$appExe" 2>&1 | Tee-Object -FilePath smoke-output.log
+          $code = $LASTEXITCODE
+          Write-Host "smoke node exit code: $code"
+          if ($code -ne 0) {
+            Say "smoke test failed (exit $code)"
+            if (Test-Path smoke-output.log) {
+              Get-Content smoke-output.log | Where-Object { $_.Trim() -ne '' } | Select-Object -Last 25 | ForEach-Object { Say $_ }
+            }
+            exit 1
+          }
+          # Best-effort silent uninstall (keeps CI image clean).
+          $unins = Join-Path $installDir 'unins000.exe'
+          if (Test-Path $unins) { Start-Process -FilePath $unins -ArgumentList '/S' -Wait }
+
+      - name: Checksums
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem dist\*.exe | Select-Object -First 1
+          $hash = (Get-FileHash $exe.FullName -Algorithm SHA256).Hash.ToLower()
+          "$hash  $($exe.Name)" | Out-File -Encoding ascii dist/SHA256SUMS.txt
+          Get-Content dist/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DentivaPro-Windows-NSIS
+          path: |
+            dist/*.exe
+            dist/SHA256SUMS.txt
+          retention-days: 30
+      - name: Installer payload size report (top 20)
+        shell: pwsh
+        run: |
+          $root = (Get-ChildItem -Directory dist | Where-Object { Test-Path (Join-Path $_.FullName 'Dentiva Pro.exe') } | Select-Object -First 1)
+          if ($root) {
+            $files = Get-ChildItem -Recurse -File $root.FullName | Sort-Object Length -Descending | Select-Object -First 20
+            foreach ($f in $files) {
+              $rel = $f.FullName.Substring($root.FullName.Length)
+              Write-Host "::error title=payload $($f.Length) bytes::$rel"
+            }
+            $total = (Get-ChildItem -Recurse -File $root.FullName | Measure-Object Length -Sum).Sum
+            Write-Host "win-unpacked total: $total bytes"
+          }
+          Get-ChildItem dist -File | ForEach-Object { Write-Host "dist/$($_.Name): $($_.Length) bytes" }
+
+      - name: Create or update GitHub Release
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/arena/'))
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ver = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $tag = "v$ver"
+          $expectedExe = Join-Path (Get-Location) "dist\DentivaPro-Setup-$ver.exe"
+          if (!(Test-Path $expectedExe)) { throw "Expected versioned installer not found: $expectedExe" }
+          $exe = (Resolve-Path $expectedExe).Path
+          $sums = (Resolve-Path dist/SHA256SUMS.txt).Path
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag $exe $sums `
+              --title "Dentiva Pro $ver" `
+              --latest `
+              --notes @"
+          Offline-first Windows dental clinic management for Bangladesh.
+
+          - NSIS installer: DentivaPro-Setup-$ver.exe
+          - SHA-256 checksums in SHA256SUMS.txt
+          - Fully offline after one-time activation; no telemetry, no paid APIs
+          - Built and smoke-tested on Windows CI from source at $($env:GITHUB_SHA)
+          "@
+          } else {
+            gh release upload $tag $exe $sums --clobber
+          }
+          if ($LASTEXITCODE -ne 0) { throw 'Release step failed' }
+
+          # Production policy: keep exactly one published release/tag — this build.
+          # GitHub CLI supports deleting a release and its associated tag together.
+          $oldTags = gh release list --limit 100 --json tagName,isDraft,isPrerelease | ConvertFrom-Json | Where-Object { $_.tagName -ne $tag -and -not $_.isDraft -and -not $_.isPrerelease } | ForEach-Object { $_.tagName }
+          if ($LASTEXITCODE -ne 0) { throw 'Could not enumerate previous releases' }
+          foreach ($oldTag in ($oldTags -split "`n" | Where-Object { $_.Trim() -ne '' })) {
+            Write-Host "Removing superseded release: $oldTag"
+            gh release delete $oldTag --yes --cleanup-tag
+            if ($LASTEXITCODE -ne 0) { throw "Failed to remove superseded release $oldTag" }
+          }

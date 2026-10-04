@@ -1,0 +1,119 @@
+/* Dentiva Pro design tokens — Premium Clinical Technology */
+:root {
+  --brand-700: #0b5e7b;
+  --brand-800: #084b63;
+  --brand-600: #0d7192;
+  --brand-50: #e8f4f8;
+  --brand-100: #d3ebf2;
+  --accent-600: #0e7c86;
+  --accent-50: #e6f4f5;
+
+  --surface-0: #f6f8fa;
+  --surface-1: #ffffff;
+  --surface-2: #eef2f5;
+  --surface-3: #e4eaef;
+
+  --text-1: #12242e;
+  --text-2: #43565f;
+  --text-3: #6b7c85;
+  --text-invert: #ffffff;
+
+  --line: #d9e2e8;
+  --line-strong: #c2cfd8;
+
+  --success: #1e7a4b;
+  --success-bg: #e7f5ee;
+  --warning: #b26b00;
+  --warning-bg: #fdf3e3;
+  --danger: #b42318;
+  --danger-bg: #fdeceb;
+  --info: #175cd3;
+  --info-bg: #eaf1fd;
+
+  --e1: 0 1px 2px rgba(16, 36, 46, 0.06), 0 1px 3px rgba(16, 36, 46, 0.08);
+  --e2: 0 4px 10px rgba(16, 36, 46, 0.08), 0 2px 4px rgba(16, 36, 46, 0.06);
+  --e3: 0 16px 40px rgba(16, 36, 46, 0.18), 0 4px 12px rgba(16, 36, 46, 0.10);
+
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+
+  --font-ui: 'Inter', 'Segoe UI', system-ui, -apple-system, 'Noto Sans', 'Noto Sans Bengali', sans-serif;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 18px;
+  --fs-2xl: 22px;
+  --fs-3xl: 28px;
+
+  --header-h: 56px;
+  --sidebar-w: 240px;
+  --sidebar-collapsed: 64px;
+
+  --motion: 150ms cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+[data-theme='dark'] {
+  --brand-700: #4fb3d4;
+  --brand-800: #79c7e2;
+  --brand-600: #2e9ec2;
+  --brand-50: #10242d;
+  --brand-100: #16323e;
+  --accent-600: #38b2b8;
+  --accent-50: #0f2a2c;
+
+  --surface-0: #0e1720;
+  --surface-1: #15212b;
+  --surface-2: #1c2b37;
+  --surface-3: #243644;
+
+  --text-1: #e9f0f4;
+  --text-2: #b3c2cb;
+  --text-3: #8597a2;
+
+  --line: #263744;
+  --line-strong: #354a5b;
+
+  --success: #4ade80;
+  --success-bg: #12301f;
+  --warning: #fbbf24;
+  --warning-bg: #332610;
+  --danger: #f87171;
+  --danger-bg: #351a18;
+  --info: #60a5fa;
+  --info-bg: #14243c;
+
+  --e1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --e2: 0 4px 10px rgba(0, 0, 0, 0.45);
+  --e3: 0 16px 40px rgba(0, 0, 0, 0.6);
+}
+
+[data-density='compact'] {
+  --fs-md: 13px;
+  --sp-4: 12px;
+  --sp-5: 16px;
+  --sp-6: 20px;
+}
+
+[data-motion='off'] * {
+  transition: none !important;
+  animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

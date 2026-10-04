@@ -1,0 +1,578 @@
+/* Dentiva Pro — print stylesheets.
+   Print routes render bare documents (no app chrome) so window.print()
+   produces clean clinic stationery. Screen mode provides editable context. */
+
+@page {
+  margin: 14mm;
+}
+
+:root {
+  --print-ink: #111827;
+  --print-line: #d7dce3;
+  --print-muted: #667085;
+  --print-accent: #0f766e;
+  --print-soft: #f5f8f8;
+}
+
+@media print {
+  html, body, #root, .print-root {
+    background: #fff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .print-toolbar {
+    display: none !important;
+  }
+  .print-stage {
+    padding: 0 !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+    display: block !important;
+  }
+  .print-doc {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    width: auto !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+  }
+  .page-break {
+    break-after: page;
+    page-break-after: always;
+  }
+}
+
+.print-root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.print-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--surface-1, #fff);
+  border-bottom: 1px solid var(--line, #e5e7eb);
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.print-stage {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 24px 16px 64px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  background: var(--bg-2, #eef1f5);
+}
+
+.print-doc.thermal80 {
+  width: 80mm;
+  min-height: auto;
+  padding: 5mm;
+  font-size: 11px;
+}
+
+.print-doc.label {
+  width: 100mm;
+  min-height: auto;
+  padding: 5mm;
+  font-size: 11px;
+}
+
+.print-doc {
+  width: 210mm;
+  min-height: 297mm;
+  background: #fff;
+  color: var(--print-ink);
+  padding: 14mm;
+  box-shadow: 0 2px 18px rgba(15, 23, 42, 0.14);
+  border: 1px solid var(--print-line);
+  border-radius: 10px;
+  font-family: 'Inter', 'Noto Sans Bengali', 'Segoe UI', sans-serif;
+  font-size: 12.5px;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+.print-doc * {
+  box-sizing: border-box;
+}
+
+.print-doc h1 {
+  font-size: 21px;
+  margin: 0;
+  letter-spacing: -0.02em;
+  color: var(--print-ink);
+}
+
+.print-generated {
+  font-size: 9.5px;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  color: #98a2b3;
+}
+
+.print-doc h2 {
+  font-size: 14.5px;
+  margin: 18px 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--print-muted);
+  border-bottom: 1.5px solid var(--print-ink);
+  padding-bottom: 4px;
+}
+
+.print-doc h3 {
+  font-size: 13px;
+  margin: 12px 0 4px;
+}
+
+.print-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+  border-bottom: 2px solid var(--print-accent);
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+}
+
+.print-header .logo {
+  width: 68px;
+  height: 68px;
+  border-radius: 12px;
+  background: var(--print-ink);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 800;
+  flex: none;
+  object-fit: contain;
+  padding: 0;
+  background: #fff;
+}
+
+.print-header .head-main {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.print-header .clinic-meta {
+  text-align: right;
+  font-size: 11.5px;
+  color: var(--print-muted);
+  line-height: 1.55;
+}
+
+.print-doc .doc-title {
+  font-size: 17px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  text-align: center;
+  margin: 6px 0 14px;
+  color: var(--print-ink);
+}
+
+.print-doc table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0 12px;
+}
+
+.print-doc table th,
+.print-doc table td {
+  border: 1px solid var(--print-line);
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.print-doc table thead th {
+  background: #f4f4f5;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #444;
+}
+
+.print-doc table.compact td,
+.print-doc table.compact th {
+  padding: 3.5px 6px;
+  font-size: 11.5px;
+}
+
+.print-doc .right {
+  text-align: right;
+}
+.print-doc .center {
+  text-align: center;
+}
+.print-doc .muted {
+  color: var(--print-muted);
+}
+.print-doc .mono {
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, 'Cascadia Mono', monospace;
+  white-space: nowrap;
+}
+
+.print-kv {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px 24px;
+  margin-bottom: 8px;
+}
+
+.print-kv > div {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px dotted var(--print-line);
+  padding: 3px 0;
+}
+
+.print-kv .k {
+  color: var(--print-muted);
+  min-width: 92px;
+  flex: none;
+}
+
+.print-kv .v {
+  font-weight: 600;
+}
+
+.totals {
+  width: 68mm;
+  margin-left: auto;
+}
+
+.totals td {
+  border: none;
+  padding: 3px 6px;
+}
+
+.totals tr.grand td {
+  border-top: 2px solid var(--print-ink);
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.rx-line {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 7px 0;
+  border-bottom: 1px dotted var(--print-line);
+}
+
+.rx-line .idx {
+  font-weight: 700;
+  min-width: 20px;
+}
+
+.rx-line .drug {
+  font-weight: 650;
+}
+
+.sig-block {
+  margin-top: 22px;
+  border-top: 1px solid var(--print-line);
+  padding-top: 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 30px;
+}
+
+.sig-line {
+  border-bottom: 1.4px solid var(--print-ink);
+  width: 58mm;
+  height: 34px;
+  margin-bottom: 4px;
+}
+
+.print-footer {
+  margin-top: 28px;
+  border-top: 1px solid var(--print-line);
+  padding-top: 8px;
+  font-size: 10.5px;
+  color: var(--print-muted);
+  display: flex;
+  justify-content: space-between;
+  text-align: center;
+}
+
+.print-watermark {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.print-watermark span {
+  font-size: 120px;
+  font-weight: 900;
+  color: #c44;
+  opacity: 0.28;
+  transform: rotate(-32deg);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+.chart-print-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 6px;
+}
+
+.chart-print-grid .tooth {
+  border: 1px solid var(--print-line);
+  padding: 5px;
+  text-align: center;
+  font-size: 11px;
+}
+
+.chart-print-grid .tooth b {
+  display: block;
+  font-size: 13px;
+}
+
+@media screen {
+  .print-doc {
+    max-width: 100%;
+  }
+}
+
+/* Narrow-paper hardening: thermal receipts must never overflow their physical roll. */
+.print-doc.thermal80 {
+  width: 80mm;
+  max-width: 80mm;
+  min-height: 0;
+  padding: 4mm;
+  font-size: 10.5px;
+  overflow-wrap: anywhere;
+}
+.print-doc.thermal80 .print-header {
+  gap: 8px;
+  padding-bottom: 8px;
+  margin-bottom: 9px;
+}
+.print-doc.thermal80 .print-header .logo {
+  width: 46px;
+  height: 46px;
+  border-radius: 7px;
+}
+.print-doc.thermal80 .print-header .head-main {
+  min-width: 0;
+  gap: 8px;
+}
+.print-doc.thermal80 .print-header .head-main > div:last-child {
+  min-width: 0;
+}
+.print-doc.thermal80 .print-header h1 {
+  font-size: 15px;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.print-doc.thermal80 .print-header .clinic-meta {
+  min-width: 0;
+  max-width: 30%;
+  font-size: 9px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.print-doc.thermal80 .print-doc table,
+.print-doc.thermal80 table {
+  width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
+}
+.print-doc.thermal80 table th,
+.print-doc.thermal80 table td {
+  padding: 4px 5px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.print-doc.thermal80 .print-kv {
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+.print-doc.thermal80 .print-kv > div {
+  min-width: 0;
+}
+.print-doc.thermal80 .print-kv .k {
+  min-width: 72px;
+  width: 72px;
+}
+.print-doc.thermal80 .print-kv .v {
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+.print-doc.thermal80 .totals {
+  width: 100%;
+  max-width: 100%;
+}
+.print-doc.thermal80 .sig-line {
+  width: min(50mm, 100%);
+}
+.print-doc.thermal80 .print-footer {
+  flex-direction: column;
+  gap: 4px;
+  text-align: center;
+}
+
+
+/* Thermal rolls use a deliberately different document geometry. The renderer
+   selects the compact thermal document; the main process also sends the exact
+   physical page size to Electron so the driver cannot fall back to A4. */
+.print-doc.thermal80.thermal-receipt,
+.print-doc.thermal80.thermal-invoice {
+  width: 72mm;
+  max-width: 72mm;
+  padding: 3mm 2.5mm;
+  margin: 0;
+  font-size: 9.5px;
+  line-height: 1.28;
+  overflow: hidden;
+}
+.print-doc.thermal80 .thermal-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  border-bottom: 1.5px solid #111;
+  padding-bottom: 6px;
+  margin-bottom: 7px;
+}
+.print-doc.thermal80 .thermal-head img,
+.print-doc.thermal80 .thermal-head .logo {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  flex: none;
+}
+.print-doc.thermal80 .thermal-clinic {
+  min-width: 0;
+}
+.print-doc.thermal80 .thermal-clinic strong {
+  display: block;
+  font-size: 12px;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+.print-doc.thermal80 .thermal-clinic span {
+  display: block;
+  color: #666;
+  font-size: 8px;
+  overflow-wrap: anywhere;
+}
+.print-doc.thermal80 .thermal-title {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  margin: 5px 0 7px;
+}
+.print-doc.thermal80 .thermal-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 6px;
+  margin-bottom: 7px;
+}
+.print-doc.thermal80 .thermal-meta > div { min-width: 0; }
+.print-doc.thermal80 .thermal-meta .k { color: #666; display:block; font-size: 7.5px; text-transform: uppercase; }
+.print-doc.thermal80 .thermal-meta .v { display:block; font-weight: 700; overflow-wrap: anywhere; }
+.print-doc.thermal80 .thermal-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  padding: 4px 0;
+  border-bottom: 1px dotted #ccc;
+}
+.print-doc.thermal80 .thermal-line .desc { min-width: 0; overflow-wrap: anywhere; word-break: normal; }
+.print-doc.thermal80 .thermal-line .amount { white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; }
+.print-doc.thermal80 .thermal-subline { color:#666; font-size: 8px; }
+.print-doc.thermal80 .thermal-total {
+  margin-top: 7px;
+  border-top: 1.5px solid #111;
+  padding-top: 5px;
+}
+.print-doc.thermal80 .thermal-total-row {
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+  padding:2px 0;
+}
+.print-doc.thermal80 .thermal-total-row strong { font-size: 11px; }
+.print-doc.thermal80 .thermal-note {
+  margin-top: 7px;
+  padding-top: 5px;
+  border-top: 1px dotted #ccc;
+  color: #666;
+  text-align: center;
+  font-size: 8px;
+  overflow-wrap: anywhere;
+}
+@media print {
+  .print-doc.thermal80 {
+    width: 72mm !important;
+    max-width: 72mm !important;
+    padding: 3mm 2.5mm !important;
+    box-shadow: none !important;
+    border: 0 !important;
+  }
+  .print-doc.thermal80.thermal-receipt,
+  .print-doc.thermal80.thermal-invoice { width: 72mm !important; max-width:72mm !important; }
+}
+
+
+.print-doc .section-card {
+  background: var(--print-soft);
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 9px 11px;
+  margin: 10px 0;
+}
+
+.print-doc h2 {
+  page-break-after: avoid;
+}
+.print-doc table {
+  break-inside: avoid;
+}
+.print-doc .grand td {
+  color: var(--print-accent);
+}
+.thermal-generated {
+  margin-top: 5px;
+  text-align: center;
+  color: #777;
+  font-size: 7.5px;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+@media print {
+  .print-doc { border-radius: 0 !important; }
+}
+
+.sig-compact { margin-top: 12px; padding-top: 8px; border-top: 1px dotted var(--print-line); }

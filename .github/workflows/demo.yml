@@ -1,0 +1,63 @@
+name: Demo Windows Build
+
+on:
+  push:
+    branches:
+      - demo-build
+
+permissions:
+  contents: write
+
+jobs:
+  demo:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Generate icons
+        run: npm run icons
+      - name: Rebuild native modules for Electron
+        run: npx electron-builder install-app-deps
+      - name: Build renderer and main
+        run: npm run build
+      - name: Stage Windows Argon2 binding
+        run: npm run prepare:argon2
+      - name: Build demo NSIS installer
+        run: npx electron-builder --win nsis --publish never --config electron-builder.demo.yml
+      - name: Verify demo package
+        shell: pwsh
+        run: |
+          $native = 'dist-demo/win-unpacked/resources/app.asar.unpacked/node_modules/@node-rs/argon2/argon2.win32-x64-msvc.node'
+          if (-not (Test-Path $native)) { throw 'Argon2 native binding check failed.' }
+          if ((Get-Item $native).Length -le 0) { throw 'Argon2 native binding is empty.' }
+      - name: Install demo silently
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem 'dist-demo/*.exe' | Select-Object -First 1
+          if (-not $installer) { throw 'Demo installer not found.' }
+          Start-Process -FilePath $installer.FullName -ArgumentList '/S' -Wait
+      - name: Smoke test demo installed artifact
+        run: node scripts/smoke-demo-installed.mjs
+      - name: Publish demo release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: demo-v1.1.2
+          name: Dentiva Pro Demo v1.1.2
+          prerelease: true
+          generate_release_notes: false
+          body: |
+            Dentiva Pro read-only demo build.
+            - Opens directly into a fictional dental clinic dashboard.
+            - No activation code or business setup required.
+            - Includes populated demo patients, visits, prescriptions, invoices, payments, appointments, queue, inventory, accounting and reports.
+            - Demo data is read-only; mutation IPC operations are blocked in the main process.
+            - Demo data is stored separately from a normal Dentiva Pro installation.
+          files: dist-demo/DentivaPro-Demo-Setup-1.1.2-demo.1.exe

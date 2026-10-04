@@ -1,0 +1,6 @@
+# Binaries must never be touched by EOL filters.
+*.exe binary
+*.ico binary
+*.png binary
+# Checksums file is compared byte-for-byte with release assets.
+dist/SHA256SUMS.txt text eol=lf
