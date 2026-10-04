@@ -1,0 +1,42 @@
+name: Bootstrap from Dentiva Pro
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    if: "!contains(github.event.head_commit.message, '[baseline-sync]')"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout source baseline
+        uses: actions/checkout@v4
+        with:
+          repository: kshohanservice-glitch/Dentiva-Windows-Application
+          ref: main
+          path: source
+
+      - name: Replace target with source baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s dotglob
+          rm -rf -- * .[^.]*
+          cp -a source/. .
+          rm -rf source .git
+          git init
+          git config user.name "Dentiva Pro Next Bootstrap"
+          git config user.email "actions@github.com"
+          git add -A
+          git commit -m "chore: bootstrap Dentiva Pro Next baseline [baseline-sync]"
+          git branch -M main
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --force origin main
