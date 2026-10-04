@@ -1,6 +1,6 @@
 /**
  * Phase B — print pipeline unit tests (CSS page geometry).
- * Electron is mocked: only pure helpers are exercised here; the window/print
+ * CI validation: Electron is mocked: only pure helpers are exercised here; the window/print
  * paths are covered by the packaged E2E (print window opens with content).
  */
 import { describe, expect, it, vi } from 'vitest';
