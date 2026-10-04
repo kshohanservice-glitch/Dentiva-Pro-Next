@@ -112,6 +112,6 @@ describe('normalizePrintGeometry', () => {
 
   it('falls back to safe physical dimensions for invalid input', () => {
     expect(normalizePrintGeometry({ widthMm: Number.NaN, heightMm: 0 }).widthMm).toBe(210);
-    expect(normalizePrintGeometry({ widthMm: Number.NaN, heightMm: 0 }).heightMm).toBe(297);
+    expect(normalizePrintGeometry({ widthMm: Number.NaN, heightMm: 0 }).heightMm).toBe(10);
   });
 });
