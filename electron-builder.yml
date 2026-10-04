@@ -1,6 +1,6 @@
 appId: com.dentiva.pro
-productName: Dentiva Pro Next
-copyright: © 2026 Dentiva Pro Next — Shohan Khan
+productName: Dentiva Pro
+copyright: © 2026 Dentiva Pro — Shohan Khan
 
 directories:
   output: dist
@@ -78,8 +78,8 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: always
   createStartMenuShortcut: true
-  shortcutName: Dentiva Pro Next
-  uninstallDisplayName: Dentiva Pro Next
+  shortcutName: Dentiva Pro
+  uninstallDisplayName: Dentiva Pro
   installerIcon: build/icon.ico
   uninstallerIcon: build/icon.ico
   installerHeaderIcon: build/icon.ico
